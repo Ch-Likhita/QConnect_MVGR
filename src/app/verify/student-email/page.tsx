@@ -92,6 +92,14 @@ export default function StudentEmailVerificationPage() {
     runVerify();
   }, [token, user, router, verifying, verifySuccess]);
 
+  // After successful verification, redirect to complete profile
+  useEffect(() => {
+    if (verifySuccess) {
+      // Redirect to profile completion for next step
+      router.push('/profile/complete');
+    }
+  }, [verifySuccess, router]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!user) {
     router.push('/login');

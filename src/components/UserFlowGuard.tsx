@@ -47,8 +47,9 @@ const UserFlowGuard = ({ children }: { children: React.ReactNode }) => {
     if (publicPaths.includes(pathname)) {
       return <>{children}</>;
     }
-    // For other paths, allow (perhaps they handle auth themselves)
-    return <>{children}</>;
+    // Redirect unauthenticated users trying to access protected pages
+    router.push('/login');
+    return null;
   }
 
   // User is logged in

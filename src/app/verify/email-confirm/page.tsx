@@ -24,8 +24,8 @@ export default function EmailConfirmPage() {
       }
 
       if (!user) {
-        setError('Please log in to verify your email');
-        setVerifying(false);
+        // Redirect to login and preserve the token so user can return to verification after signin
+        router.push(`/login?next=${encodeURIComponent(`/verify/email-confirm?token=${token}`)}`);
         return;
       }
 
