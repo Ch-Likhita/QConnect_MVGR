@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "qconnect-2fb72"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

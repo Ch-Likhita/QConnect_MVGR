@@ -1,5 +1,10 @@
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
+import sgMail from "@sendgrid/mail";
+import { defineSecret } from "firebase-functions/params";
+
+
+const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -23,7 +28,9 @@ export const onUserCreate = functions.auth.user().onCreate(async (user) => {
 
 // 2. Student Email Verification: Send Email
 export const sendStudentVerificationEmail =
-  functions.https.onCall(async (data, context) => {
+  functions
+    .runWith({ secrets: [SENDGRID_API_KEY] })
+    .https.onCall(async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -80,22 +87,113 @@ export const sendStudentVerificationEmail =
       expiresAt: expiry,
     });
 
-    // Send email (using Firebase Auth email service)
+    // Fetch user's display name
+    const userDoc = await db.collection("users").doc(userId).get();
+    const userData = userDoc.data();
+    const displayName = userData?.displayName || "Student";
 
+    // Send email using SendGrid
     try {
-    // Note: In production, use a proper email service like SendGrid
-    // or Firebase Extensions (or another transactional provider)
-    // For now, we'll simulate sending the email
-      const sentMsg = `Verification email sent to ${email} with token ${token}`;
-      console.log(sentMsg);
+      sgMail.setApiKey(SENDGRID_API_KEY.value());
+
+      const verificationLink = `https://69515b291d20c70d0be6c7b3--qconnectmvgr.netlify.app/verify/email-confirm?token=${token}`;
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Verify Your Email - QConnect MVGR</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #ffffff;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+              text-align: center;
+              padding: 20px 0;
+              background-color: #007bff;
+              color: #ffffff;
+              border-radius: 8px 8px 0 0;
+            }
+            .content {
+              padding: 20px;
+              text-align: center;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 24px;
+              background-color: #28a745;
+              color: #ffffff;
+              text-decoration: none;
+              border-radius: 4px;
+              margin: 20px 0;
+            }
+            .footer {
+              padding: 20px;
+              text-align: center;
+              color: #666666;
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>QConnect MVGR</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${displayName},</h2>
+              <p>Welcome to QConnect MVGR! Please verify your college email address to complete your registration.</p>
+              <a href="${verificationLink}" class="button">Verify Email</a>
+              <p>If the button doesn't work, copy and paste this link into your browser:</p>
+              <p><a href="${verificationLink}">${verificationLink}</a></p>
+              <p><strong>This link will expire in 24 hours.</strong></p>
+            </div>
+            <div class="footer">
+              <p>If you didn't request this verification, please ignore this email.</p>
+              <p>&copy; 2023 QConnect MVGR. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await sgMail.send({
+        to: email,
+        from: "noreply.qconnect01@gmail.com",
+        subject: "Verify Your Email - QConnect MVGR",
+        html: htmlContent,
+      });
+
+      // Update user document
+      await db.collection("users").doc(userId).update({
+        collegeEmail: email,
+        verificationStatus: "pending",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
       return {
         success: true,
         message: "Verification email sent",
         token: token,
       };
-    } catch (error) {
-      console.error("Error sending verification email:", error);
+    } catch (error: any) {
+      console.error(
+        "SendGrid full error:",
+        JSON.stringify(error?.response?.body, null, 2)
+      );
       throw new functions.https.HttpsError(
         "internal",
         "Failed to send verification email"
