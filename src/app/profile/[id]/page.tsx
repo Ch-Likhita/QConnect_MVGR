@@ -6,8 +6,12 @@ import { db } from '../../../lib/firebase';
 import { User } from '../../../types/user';
 import RoleBadge from '../../../components/common/RoleBadge';
 import { notFound } from 'next/navigation';
+import { useAuth } from '../../../hooks/useAuth';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage({ params }: { params: { id: string } }) {
+  const { user: currentUser } = useAuth();
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -309,7 +313,17 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
               <h1 className="text-2xl font-bold text-gray-900">{user.displayName}</h1>
               <p className="text-gray-600">{user.email}</p>
             </div>
-            <RoleBadge role={user.role || 'unknown'} />
+            <div className="flex items-center space-x-4">
+              {currentUser && currentUser.uid === params.id && (
+                <button
+                  onClick={() => router.push('/profile/edit')}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Edit Profile
+                </button>
+              )}
+              <RoleBadge role={user.role || 'unknown'} />
+            </div>
           </div>
         </div>
         {renderProfileContent()}
