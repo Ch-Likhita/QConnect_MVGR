@@ -39,7 +39,6 @@ const UserFlowGuard = ({ children }: { children: React.ReactNode }) => {
           return '/verify/role-select';
       }
     }
-    if (!user.profileCompleted) return '/profile/complete';
     return '/home';
   };
 

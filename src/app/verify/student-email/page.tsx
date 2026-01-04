@@ -105,8 +105,7 @@ export default function StudentEmailVerificationPage() {
   }
 
   if (user.verificationStatus === 'verified') {
-    console.log('Button clicked, navigating to profile/complete');
-    router.push('/profile/complete');
+    router.push('/home');
     return null;
   }
 
@@ -162,13 +161,8 @@ export default function StudentEmailVerificationPage() {
                 Didn&apos;t receive the email? Check your spam folder or try again in 60 seconds.
               </p>
               <p className="mt-4 text-sm text-gray-600">
-                After clicking the verification link in your email, you'll be automatically redirected to complete your profile.
+                After clicking the verification link in your email, you'll be automatically redirected to your dashboard.
               </p>
-              <div className="mt-4">
-                <button onClick={() => alert('clicked!')} className="bg-blue-500 text-white px-4 py-2">
-                  TEST BUTTON
-                </button>
-              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
