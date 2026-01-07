@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
+import type { User } from "../types/user";
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -224,6 +225,4 @@ export default function UserFlowGuard({
     router.push(nextPath);
     return null;
   }
-};
-
-export default UserFlowGuard;
+}
