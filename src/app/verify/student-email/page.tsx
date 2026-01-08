@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../../lib/firebase';
+import { getFunctionsInstance } from '../../../lib/firebase';
 
 export default function StudentEmailVerificationPage() {
   const { user, loading } = useAuth();
@@ -33,7 +33,9 @@ export default function StudentEmailVerificationPage() {
 
     setSending(true);
     try {
-      const sendVerificationEmail = httpsCallable(functions, 'sendStudentVerificationEmail');
+      const funcs = getFunctionsInstance();
+      if (!funcs) throw new Error('Client only');
+      const sendVerificationEmail = httpsCallable(funcs, 'sendStudentVerificationEmail');
       const response = await sendVerificationEmail({ email });
       console.log('Full response:', response);
       console.log('Response data:', response.data);
@@ -77,7 +79,9 @@ export default function StudentEmailVerificationPage() {
       console.log('About to call verifyStudentEmail with token:', token);
       console.log('verifyStudentEmail: calling with token', token);
       try {
-        const verifyFn = httpsCallable(functions, 'verifyStudentEmail');
+        const funcs = getFunctionsInstance();
+        if (!funcs) throw new Error('Client only');
+        const verifyFn = httpsCallable(funcs, 'verifyStudentEmail');
         const res = await verifyFn({ token });
         console.log('verifyStudentEmail response', res);
         setVerifySuccess(true);

@@ -3,6 +3,9 @@ import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getAuth } from "firebase/auth";
 
+// USAGE: Always use getFunctionsInstance() and getAuthInstance()
+// Never import { auth, functions } directly
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -13,13 +16,22 @@ const firebaseConfig = {
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-
 const db = getFirestore(app);
-// ✅ Functions work on both client and server in Next.js
-const functions = getFunctions(app);
 
-// ✅ IMPORTANT: Auth only in browser
-const auth =
-  typeof window !== "undefined" ? getAuth(app) : null;
+// ✅ Lazy initialization - only create when accessed
+let _functions: ReturnType<typeof getFunctions> | null = null;
+let _auth: ReturnType<typeof getAuth> | null = null;
 
-export { app, db, auth, functions };
+const getFunctionsInstance = () => {
+  if (typeof window === "undefined") return null;
+  if (!_functions) _functions = getFunctions(app);
+  return _functions;
+};
+
+const getAuthInstance = () => {
+  if (typeof window === "undefined") return null;
+  if (!_auth) _auth = getAuth(app);
+  return _auth;
+};
+
+export { app, db, getFunctionsInstance, getAuthInstance };

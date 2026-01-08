@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../../lib/firebase';
+import { getAuthInstance } from '../../../lib/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -16,7 +16,12 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const authInst = getAuthInstance();
+      if (!authInst) {
+        setError('Client only');
+        return;
+      }
+      await signInWithEmailAndPassword(authInst, email, password);
       push(nextParam || '/home');
     } catch (err: any) {
       setError(err.message);

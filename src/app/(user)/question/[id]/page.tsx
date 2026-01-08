@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { db, functions } from '../../../../lib/firebase';
+import { db, getFunctionsInstance } from '../../../../lib/firebase';
 import { doc, getDoc, collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../../../../hooks/useAuth';
@@ -67,12 +67,14 @@ export default function QuestionPage() {
   };
 
   const likeAnswer = async (answerId: string) => {
+     const functions = getFunctionsInstance();
+     if (!functions) throw new Error('Client only');
      const likeFn = httpsCallable(functions, 'engagement-likeAnswer');
      try {
        await likeFn({ questionId: id, answerId });
        // reload or update local state
      } catch(e) { console.error(e); }
-  };
+  }; 
 
   if (loading) return <div className="p-10 text-center">Loading...</div>;
   if (!question) return <div className="p-10 text-center">Question not found</div>;
