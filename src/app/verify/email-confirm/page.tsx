@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../../lib/firebase';
+import { getFunctionsInstance } from '../../../lib/firebase';
 
 export default function EmailConfirmPage() {
   const { user, loading } = useAuth();
@@ -30,6 +30,8 @@ export default function EmailConfirmPage() {
       }
 
       try {
+        const functions = getFunctionsInstance();
+        if (!functions) throw new Error('Client only');
         const verifyFn = httpsCallable(functions, 'verifyStudentEmail');
         await verifyFn({ token });
         setSuccess(true);

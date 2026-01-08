@@ -1,8 +1,9 @@
+'use client';
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../hooks/useAuth';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
+import { getAuthInstance } from '../../lib/firebase';
 import RoleBadge from './RoleBadge';
 import { LogOut, User, LayoutDashboard, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -13,7 +14,13 @@ const Navbar = () => {
 
   const handleSignOut = async () => {
     try {
-        await signOut(auth);
+        const authInst = getAuthInstance();
+        if (!authInst) {
+          console.error('Sign out attempted on server');
+          push('/login');
+          return;
+        }
+        await signOut(authInst);
         push('/login');
     } catch (error) {
         console.error("Sign out failed", error);

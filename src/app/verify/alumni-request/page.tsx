@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../../lib/firebase';
+import { getFunctionsInstance } from '../../../lib/firebase';
 
 export default function AlumniVerificationRequestPage() {
   const { user, loading } = useAuth();
@@ -60,6 +60,8 @@ export default function AlumniVerificationRequestPage() {
 
     setSubmitting(true);
     try {
+      const functions = getFunctionsInstance();
+      if (!functions) throw new Error('Client only');
       const submitVerificationRequest = httpsCallable(functions, 'submitVerificationRequest');
       await submitVerificationRequest({
         role: 'alumni',

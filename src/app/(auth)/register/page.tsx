@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../../../lib/firebase';
+import { db, getAuthInstance } from '../../../lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -20,7 +20,13 @@ export default function RegisterPage() {
     setSubmitting(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const authInst = getAuthInstance();
+      if (!authInst) {
+        setError('Client only');
+        setSubmitting(false);
+        return;
+      }
+      const userCredential = await createUserWithEmailAndPassword(authInst, email, password);
 
       // Create or merge user doc in Firestore (cloud function may also create one)
       const userDoc = {
