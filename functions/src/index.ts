@@ -31,6 +31,10 @@ export const sendStudentVerificationEmail =
   functions
     .runWith({ secrets: [SENDGRID_API_KEY] })
     .https.onCall(async (data, context) => {
+
+    console.log("Received data:", JSON.stringify(data));
+    console.log("Context auth:", context.auth?.uid);
+    
     if (!context.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -39,6 +43,7 @@ export const sendStudentVerificationEmail =
     }
 
     const {email} = data;
+    
     const userId = context.auth.uid;
 
     // Validate email domain
@@ -94,9 +99,25 @@ export const sendStudentVerificationEmail =
 
     // Send email using SendGrid
     try {
+      // Validation before sending
+      if (!email || typeof email !== 'string') {
+        throw new Error('Invalid recipient email');
+      }
+      if (!displayName || typeof displayName !== 'string') {
+        throw new Error('Invalid display name');
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Invalid email format');
+      }
+
+      console.log('Setting SendGrid API key...');
       sgMail.setApiKey(SENDGRID_API_KEY.value());
 
       const verificationLink = `https://69515b291d20c70d0be6c7b3--qconnectmvgr.netlify.app/verify/email-confirm?token=${token}`;
+      console.log('Verification link:', verificationLink);
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -170,12 +191,49 @@ export const sendStudentVerificationEmail =
         </html>
       `;
 
-      await sgMail.send({
+      const textContent = `
+        Hello ${displayName},
+
+        Welcome to QConnect MVGR! Please verify your college email address to complete your registration.
+
+        Verify your email: ${verificationLink}
+
+        This link will expire in 24 hours.
+
+        If you didn't request this verification, please ignore this email.
+
+        © 2023 QConnect MVGR. All rights reserved.
+      `.trim();
+
+      // Validate content is not empty
+      if (!htmlContent || htmlContent.trim().length === 0) {
+        throw new Error('HTML content is empty');
+      }
+      if (!textContent || textContent.trim().length === 0) {
+        throw new Error('Text content is empty');
+      }
+
+      console.log('Sending email with params:', {
+        to: email,
+        from: "noreply.qconnect01@gmail.com",
+        subject: "Verify Your Email - QConnect MVGR",
+        htmlLength: htmlContent.length,
+        textLength: textContent.length
+      });
+
+      const emailPayload = {
         to: email,
         from: "noreply.qconnect01@gmail.com",
         subject: "Verify Your Email - QConnect MVGR",
         html: htmlContent,
-      });
+        text: textContent,
+      };
+
+      console.log('Email payload structure:', JSON.stringify(emailPayload, null, 2));
+
+      const sendResult = await sgMail.send(emailPayload);
+
+      console.log('SendGrid send result:', sendResult);
 
       // Update user document
       await db.collection("users").doc(userId).update({
@@ -190,15 +248,19 @@ export const sendStudentVerificationEmail =
         token: token,
       };
     } catch (error: any) {
-      console.error(
-        "SendGrid full error:",
-        JSON.stringify(error?.response?.body, null, 2)
-      );
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to send verification email"
-      );
-    }
+        console.log("SendGrid Error Details:");
+        console.log("Full error object:", JSON.stringify(error, null, 2));
+        console.log("Error message:", error?.message);
+        console.log("Error code:", error?.code);
+        console.log("Response body:", JSON.stringify(error?.response?.body, null, 2));
+        console.log("Response headers:", JSON.stringify(error?.response?.headers, null, 2));
+        console.log("Stack trace:", error?.stack);
+
+        throw new functions.https.HttpsError(
+          "internal",
+          `Failed to send email: ${error?.message || "Unknown error"}`
+        );
+      }
   });
 
 // 3. Student Email Verification: Verify Token

@@ -40,14 +40,7 @@ export default function StudentEmailVerificationPage() {
       const token = (response.data as any).token;
       console.log('Extracted token:', token);
 
-      if (!token) {
-        setError('Failed to get verification token');
-        return;
-      }
-
-      // Add small delay to see logs
-      await new Promise(resolve => setTimeout(resolve, 100));
-      router.push(`/verify/student-email?token=${token}`);
+      setSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send verification email');
     } finally {
@@ -99,6 +92,14 @@ export default function StudentEmailVerificationPage() {
     runVerify();
   }, [token, user, router, verifying, verifySuccess]);
 
+  // After successful verification, redirect to complete profile
+  useEffect(() => {
+    if (verifySuccess) {
+      // Redirect to profile completion for next step
+      router.push('/profile/complete');
+    }
+  }, [verifySuccess, router]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!user) {
     router.push('/login');
@@ -112,8 +113,7 @@ export default function StudentEmailVerificationPage() {
   }
 
   if (user.verificationStatus === 'verified') {
-    console.log('Button clicked, navigating to profile/complete');
-    router.push('/profile/complete');
+    router.push('/home');
     return null;
   }
 
@@ -150,14 +150,9 @@ export default function StudentEmailVerificationPage() {
               </div>
               <h3 className="mt-2 text-sm font-medium text-gray-900">Email verified</h3>
               <p className="mt-1 text-sm text-gray-500">Your email has been successfully verified.</p>
-              <div className="mt-6">
-                <button
-                  onClick={() => router.push('/profile/complete')}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Continue to Complete Profile
-                </button>
-              </div>
+              <p className="mt-4 text-sm text-gray-600">
+                After clicking the verification link in your email, you'll be automatically redirected to complete your profile.
+              </p>
             </div>
           ) : sent ? (
             <div className="text-center">
@@ -173,23 +168,9 @@ export default function StudentEmailVerificationPage() {
               <p className="mt-2 text-xs text-gray-400">
                 Didn&apos;t receive the email? Check your spam folder or try again in 60 seconds.
               </p>
-              <div className="mt-6">
-                <button
-                  onClick={() => {
-                    console.log('Navigating to /profile/complete');
-                    router.push('/profile/complete');
-                    console.log('Push called');
-                  }}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Continue to Complete Profile
-                </button>
-              </div>
-              <div className="mt-4">
-                <button onClick={() => alert('clicked!')} className="bg-blue-500 text-white px-4 py-2">
-                  TEST BUTTON
-                </button>
-              </div>
+              <p className="mt-4 text-sm text-gray-600">
+                After clicking the verification link in your email, you'll be automatically redirected to your dashboard.
+              </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
