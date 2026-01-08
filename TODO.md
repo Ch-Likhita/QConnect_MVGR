@@ -1,13 +1,5 @@
-# Email Verification Implementation Plan
+# TODO List for Updating Like Answer Functionality
 
-## Tasks
-- [x] Create `/verify/email-confirm/page.tsx`
-- [x] Update `/verify/student-email/page.tsx` (remove redirect after email send)
-- [x] Add "Edit Profile" button to `/profile/[id]/page.tsx`
-- [x] Create `/profile/edit/page.tsx` reusing form from `/profile/complete`
-- [x] Remove `functions.config()` from Firebase Functions and hardcode Netlify URL
-
-## Followup steps
-- [ ] Redeploy Firebase Functions: `firebase deploy --only functions`
-- [ ] Test email verification flow end-to-end
-- [ ] Test profile editing functionality
+- [x] Update AnswerCard.tsx: Add useState for count initialized with answer.likeCount || 0, implement optimistic update in handleLike (increment immediately, rollback on error), change display to {count} Likes.
+- [x] Deploy functions: Run firebase deploy --only functions.
+- [x] Update QuestionPage: Import AnswerCard, replace answers.map with AnswerCard components, remove handleLike function.

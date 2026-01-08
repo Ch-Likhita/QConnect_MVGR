@@ -1,6 +1,9 @@
 import { collection, query, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../lib/firebase';
 import { Answer } from '../types/answer';
+
+const functions = getFunctions();
 
 /**
  * Subscribes to real-time updates for answers of a specific question.
@@ -41,5 +44,21 @@ export const subscribeToAnswers = (
     console.error('Error setting up answers subscription:', error);
     // Return a no-op unsubscribe function
     return () => {};
+  }
+};
+
+/**
+ * Increments the like count for a specific answer via Cloud Functions.
+ * @param questionId The ID of the parent question
+ * @param answerId The ID of the answer to like
+ */
+export const likeAnswer = async (questionId: string, answerId: string) => {
+  try {
+    const likeAnswerFn = httpsCallable(functions, 'likeAnswer');
+    const result = await likeAnswerFn({ questionId, answerId });
+    return result.data;
+  } catch (error) {
+    console.error("Error liking answer:", error);
+    throw error;
   }
 };

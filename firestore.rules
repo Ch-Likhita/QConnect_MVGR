@@ -34,7 +34,12 @@ service cloud.firestore {
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.verificationStatus == 'verified' &&
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'expert';
         
-        // Answer owners can update their answers
+        // 1. Allow any logged-in user to increment the likeCount field
+        // This uses .diff() to ensure ONLY the likeCount is being changed
+        allow update: if request.auth != null &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount']);
+
+        // 2. Existing rule: Answer owners can still update everything else
         allow update: if request.auth != null && request.auth.uid == resource.data.userId;
       }
     }

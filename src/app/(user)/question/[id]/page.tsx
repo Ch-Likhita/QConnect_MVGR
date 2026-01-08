@@ -1,12 +1,13 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { db, getFunctionsInstance } from '../../../../lib/firebase';
-import { doc, getDoc, collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
+import { db } from '../../../../lib/firebase';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { subscribeToAnswers } from '../../../../services/answers.services';
 import { useAuth } from '../../../../hooks/useAuth';
 import RoleBadge from '../../../../components/common/RoleBadge';
 import VerifiedBadge from '../../../../components/common/VerifiedBadge';
+import AnswerCard from '../../../../components/questions/AnswerCard';
 import { Question } from '../../../../types/question';
 import { Answer } from '../../../../types/answer';
 import { Check, ThumbsUp } from 'lucide-react';
@@ -28,13 +29,6 @@ export default function QuestionPage() {
         const qDoc = await getDoc(doc(db, 'questions', id));
         if (qDoc.exists()) {
           setQuestion({ id: qDoc.id, ...qDoc.data() } as Question);
-          
-          // Fetch answers
-          const q = query(collection(db, 'questions', id, 'answers'), orderBy('isAccepted', 'desc'), orderBy('likeCount', 'desc'));
-          const ansSnap = await getDocs(q);
-          const ansList: Answer[] = [];
-          ansSnap.forEach(d => ansList.push({ id: d.id, ...d.data() } as Answer));
-          setAnswers(ansList);
         }
       } catch (e) {
         console.error("Error loading question:", e);
@@ -42,6 +36,19 @@ export default function QuestionPage() {
       setLoading(false);
     };
     fetchData();
+
+    const unsubscribe = subscribeToAnswers(id, (answers) => {
+      // Sort answers: isAccepted desc, then likeCount desc
+      const sortedAnswers = answers.sort((a, b) => {
+        if (a.isAccepted !== b.isAccepted) {
+          return b.isAccepted ? 1 : -1;
+        }
+        return b.likeCount - a.likeCount;
+      });
+      setAnswers(sortedAnswers);
+    });
+
+    return unsubscribe;
   }, [id]);
 
   const handlePostAnswer = async (e: React.FormEvent) => {
@@ -59,22 +66,13 @@ export default function QuestionPage() {
         updatedAt: serverTimestamp(),
       });
       setNewAnswer('');
-      // Ideally trigger cloud function updates here or rely on real-time listeners
-      window.location.reload(); 
+      // Real-time updates handled by subscribeToAnswers
     } catch (err) {
       console.error(err);
     }
   };
 
-  const likeAnswer = async (answerId: string) => {
-     const functions = getFunctionsInstance();
-     if (!functions) throw new Error('Client only');
-     const likeFn = httpsCallable(functions, 'engagement-likeAnswer');
-     try {
-       await likeFn({ questionId: id, answerId });
-       // reload or update local state
-     } catch(e) { console.error(e); }
-  }; 
+
 
   if (loading) return <div className="p-10 text-center">Loading...</div>;
   if (!question) return <div className="p-10 text-center">Question not found</div>;
@@ -101,28 +99,11 @@ export default function QuestionPage() {
       {/* Answer List */}
       <div className="space-y-6 mb-10">
         {answers.map(ans => (
-          <div key={ans.id} className={`bg-white shadow sm:rounded-lg p-6 ${ans.isAccepted ? 'border-2 border-green-500' : ''}`}>
-            {ans.isAccepted && (
-              <div className="flex items-center text-green-600 mb-2 text-sm font-bold">
-                <Check size={16} className="mr-1" /> Accepted Solution
-              </div>
-            )}
-            <div className="prose max-w-none text-gray-800 mb-4 whitespace-pre-wrap">{ans.body}</div>
-            
-            <div className="flex justify-between items-center mt-4">
-              <div className="flex items-center space-x-2">
-                 <div className="font-medium text-sm text-gray-900">Expert User</div>
-                 <RoleBadge role={ans.authorRole} />
-                 <VerifiedBadge status="verified" />
-              </div>
-              <div className="flex items-center space-x-4">
-                <button className="flex items-center text-gray-500 hover:text-indigo-600" onClick={() => ans.id && likeAnswer(ans.id)}>
-                   <ThumbsUp size={16} className="mr-1" />
-                   <span>{ans.likeCount}</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <AnswerCard
+            key={ans.id}
+            answer={ans}
+            questionId={id}
+          />
         ))}
       </div>
 
