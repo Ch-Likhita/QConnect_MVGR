@@ -3,12 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Users collection
     match /users/{userId} {
-      // Users can read and write their own document
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Any authenticated user can read user documents
+      allow read: if request.auth != null;
       
-      // Admins can read all users
-      allow read: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Users can write only their own document
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Questions collection
