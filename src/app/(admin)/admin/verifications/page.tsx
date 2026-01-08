@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db, functions } from '../../../../lib/firebase';
+import { db, getFunctionsInstance } from '../../../../lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../../../../hooks/useAuth';
 
@@ -23,6 +23,8 @@ export default function VerificationQueue() {
 
   const handleApprove = async (userId: string) => {
     try {
+      const functions = getFunctionsInstance();
+      if (!functions) throw new Error('Client only');
       const approveFn = httpsCallable(functions, 'verification-approveVerification');
       await approveFn({ userId });
       setRequests(requests.filter(r => r.userId !== userId));
@@ -32,12 +34,14 @@ export default function VerificationQueue() {
 
   const handleReject = async (userId: string) => {
     try {
+       const functions = getFunctionsInstance();
+       if (!functions) throw new Error('Client only');
        const rejectFn = httpsCallable(functions, 'verification-rejectVerification');
        await rejectFn({ userId });
        setRequests(requests.filter(r => r.userId !== userId));
        alert("Rejected");
     } catch(e) { console.error(e); alert("Error"); }
-  };
+  }; 
 
   if (!userProfile || userProfile.role !== 'admin') return <div className="p-8">Access Denied</div>;
 

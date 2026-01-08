@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '../../../lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, getAuthInstance } from '../../../lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { waitForUserDocument } from '../../../services/auth.service';
 
@@ -20,7 +21,13 @@ export default function RegisterPage() {
     setSubmitting(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const authInst = getAuthInstance();
+      if (!authInst) {
+        setError('Client only');
+        setSubmitting(false);
+        return;
+      }
+      const userCredential = await createUserWithEmailAndPassword(authInst, email, password);
 
       // Update the user's profile with display name
       await updateProfile(userCredential.user, { displayName });

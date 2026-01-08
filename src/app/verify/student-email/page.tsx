@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../../lib/firebase';
+import { getFunctionsInstance } from '../../../lib/firebase';
 
 export default function StudentEmailVerificationPage() {
   const { user, loading } = useAuth();
@@ -16,10 +16,7 @@ export default function StudentEmailVerificationPage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  // Verification via token state
-  const [verifying, setVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState('');
-  const [verifySuccess, setVerifySuccess] = useState(false);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,21 +30,16 @@ export default function StudentEmailVerificationPage() {
 
     setSending(true);
     try {
-      const sendVerificationEmail = httpsCallable(functions, 'sendStudentVerificationEmail');
+      const funcs = getFunctionsInstance();
+      if (!funcs) throw new Error('Client only');
+      const sendVerificationEmail = httpsCallable(funcs, 'sendStudentVerificationEmail');
       const response = await sendVerificationEmail({ email });
       console.log('Full response:', response);
       console.log('Response data:', response.data);
       const token = (response.data as any).token;
       console.log('Extracted token:', token);
 
-      if (!token) {
-        setError('Failed to get verification token');
-        return;
-      }
-
-      // Add small delay to see logs
-      await new Promise(resolve => setTimeout(resolve, 100));
-      router.push(`/verify/student-email?token=${token}`);
+      setSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send verification email');
     } finally {
@@ -55,49 +47,9 @@ export default function StudentEmailVerificationPage() {
     }
   };
 
-  // If there's a token in the URL, attempt verification
-  useEffect(() => {
-    console.log('verifyEffect state', { token, userExists: !!user, verifying, verifySuccess });
-    if (!token) return;
 
-    // Must be authenticated to verify
-    if (!user) {
-      console.log('verifyEffect: no user, redirecting to /login');
-      router.push('/login');
-      return;
-    }
 
-    if (user.verificationStatus === 'verified') {
-      console.log('verifyEffect: user already verified, skipping');
-      return;
-    }
 
-    // Avoid double-run
-    if (verifying || verifySuccess) {
-      console.log('verifyEffect: skipping due to verifying or success', { verifying, verifySuccess });
-      return;
-    }
-
-    const runVerify = async () => {
-      setVerifying(true);
-      setVerifyError('');
-      console.log('About to call verifyStudentEmail with token:', token);
-      console.log('verifyStudentEmail: calling with token', token);
-      try {
-        const verifyFn = httpsCallable(functions, 'verifyStudentEmail');
-        const res = await verifyFn({ token });
-        console.log('verifyStudentEmail response', res);
-        setVerifySuccess(true);
-      } catch (err: any) {
-        console.error('verifyStudentEmail error', err);
-        setVerifyError(err?.message || 'Verification failed');
-      } finally {
-        setVerifying(false);
-      }
-    };
-
-    runVerify();
-  }, [token, user, router, verifying, verifySuccess]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!user) {
@@ -112,8 +64,7 @@ export default function StudentEmailVerificationPage() {
   }
 
   if (user.verificationStatus === 'verified') {
-    console.log('Button clicked, navigating to profile/complete');
-    router.push('/profile/complete');
+    router.push('/home');
     return null;
   }
 
@@ -130,36 +81,7 @@ export default function StudentEmailVerificationPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {verifying ? (
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
-                <svg className="h-6 w-6 text-blue-600 animate-spin" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 010 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"></path>
-                </svg>
-              </div>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Verifying...</h3>
-              <p className="mt-1 text-sm text-gray-500">Please wait while we verify the token.</p>
-            </div>
-          ) : verifySuccess ? (
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Email verified</h3>
-              <p className="mt-1 text-sm text-gray-500">Your email has been successfully verified.</p>
-              <div className="mt-6">
-                <button
-                  onClick={() => router.push('/profile/complete')}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Continue to Complete Profile
-                </button>
-              </div>
-            </div>
-          ) : sent ? (
+          {sent ? (
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
                 <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -173,31 +95,9 @@ export default function StudentEmailVerificationPage() {
               <p className="mt-2 text-xs text-gray-400">
                 Didn&apos;t receive the email? Check your spam folder or try again in 60 seconds.
               </p>
-              <div className="mt-6">
-                <button
-                  onClick={() => {
-                    console.log('Navigating to /profile/complete');
-                    router.push('/profile/complete');
-                    console.log('Push called');
-                  }}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Continue to Complete Profile
-                </button>
-              </div>
-              <div className="mt-4">
-                <button onClick={() => alert('clicked!')} className="bg-blue-500 text-white px-4 py-2">
-                  TEST BUTTON
-                </button>
-              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              {verifyError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-                  {verifyError}
-                </div>
-              )}
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
                   {error}
