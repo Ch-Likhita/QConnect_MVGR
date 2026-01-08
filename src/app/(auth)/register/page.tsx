@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../../../lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth } from '../../../lib/firebase';
 import { useRouter } from 'next/navigation';
+import { waitForUserDocument } from '../../../services/auth.service';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -22,21 +22,14 @@ export default function RegisterPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-      // Create or merge user doc in Firestore (cloud function may also create one)
-      const userDoc = {
-        uid: userCredential.user.uid,
-        email,
-        personalEmail: email,
-        displayName,
-        role: 'student',
-        verificationStatus: 'unverified',
-        verificationMethod: 'none',
-        profileCompleted: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+      // Update the user's profile with display name
+      await updateProfile(userCredential.user, { displayName });
 
-      await setDoc(doc(db, 'users', userCredential.user.uid), userDoc, { merge: true });
+      // Wait for Cloud Function to create user document
+      const userDocCreated = await waitForUserDocument(userCredential.user.uid);
+      if (!userDocCreated) {
+        throw new Error('User document creation timed out. Please try again.');
+      }
 
       push('/verify/role-select');
     } catch (err: any) {
