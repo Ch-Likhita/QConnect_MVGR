@@ -15,9 +15,8 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 const db = getFirestore(app);
-// ✅ Functions only in browser
-const functions =
-  typeof window !== "undefined" ? getFunctions(app) : null;
+// ✅ Functions work on both client and server in Next.js
+const functions = getFunctions(app);
 
 // ✅ IMPORTANT: Auth only in browser
 const auth =

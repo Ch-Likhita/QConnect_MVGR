@@ -1,5 +1,5 @@
 {
-  "name": "mvgr-knowledge-platform",
+  "name": "my-netlify-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "required-package": "^1.0.0",
     "@sendgrid/mail": "^8.1.6",
     "firebase": "^12.7.0",
     "@firebase/firestore": "^4.9.3",
@@ -21,6 +22,9 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-firebase-hooks": "^5.1.1"
+  },
+  "optionalDependencies": {
+    "optional-package": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.20",
