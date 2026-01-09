@@ -4,14 +4,21 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { httpsCallable } from 'firebase/functions';
+import { getFunctionsInstance } from '../../../lib/firebase';
 
 export default function CompleteProfilePage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams ? searchParams.get('token') : null;
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  
   console.log('User:', user);
   console.log('Loading:', loading);
   console.log('Role:', user?.role);
-  const router = useRouter();
 
   // State for form fields
   const [displayName, setDisplayName] = useState('');
@@ -54,9 +61,32 @@ export default function CompleteProfilePage() {
   const [rolesHiringFor, setRolesHiringFor] = useState<string[]>([]);
   const [eligibleBranches, setEligibleBranches] = useState<string[]>([]);
 
+  // Verify email token if present
+  useEffect(() => {
+    const verifyToken = async () => {
+      if (!token || !user) return;
+      
+      setVerifyingEmail(true);
+      try {
+        const functions = getFunctionsInstance();
+        if (!functions) throw new Error('Client only');
+        const verifyFn = httpsCallable(functions, 'verifyStudentEmail');
+        await verifyFn({ token });
+        setVerifyError('');
+      } catch (err: any) {
+        console.error('Email verification error:', err);
+        setVerifyError(err?.message || 'Email verification failed');
+      } finally {
+        setVerifyingEmail(false);
+      }
+    };
+    
+    verifyToken();
+  }, [token, user]);
+
   // Navigation decisions moved into effect to avoid calling router during render
   useEffect(() => {
-    if (loading) return;
+    if (loading || verifyingEmail) return;
 
     if (!user) {
       router.push('/login');
@@ -78,7 +108,7 @@ export default function CompleteProfilePage() {
       }
       return;
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, verifyingEmail]);
 
   // While loading, show loader
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

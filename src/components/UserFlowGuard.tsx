@@ -18,7 +18,7 @@ const UserFlowGuard = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  const publicPaths = ['/', '/login', '/register', '/verify/email-confirm'];
+  const publicPaths = ['/', '/login', '/register'];
 
   const isComplete = (user: User) =>
     user.role && user.verificationStatus === 'verified' && user.profileCompleted;

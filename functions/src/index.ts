@@ -116,7 +116,7 @@ export const sendStudentVerificationEmail =
       console.log('Setting SendGrid API key...');
       sgMail.setApiKey(SENDGRID_API_KEY.value());
 
-      const verificationLink = `https://69515b291d20c70d0be6c7b3--qconnectmvgr.netlify.app/verify/email-confirm?token=${token}`;
+      const verificationLink = `https://69515b291d20c70d0be6c7b3--qconnectmvgr.netlify.app/profile/complete?token=${token}`;
       console.log('Verification link:', verificationLink);
 
       const htmlContent = `
