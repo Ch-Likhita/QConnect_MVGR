@@ -35,6 +35,8 @@ export default function QuestionPage() {
       }
       setLoading(false);
     };
+    if (!id) return;
+
     fetchData();
 
     const unsubscribe = subscribeToAnswers(id, (answers) => {
@@ -48,7 +50,7 @@ export default function QuestionPage() {
       setAnswers(sortedAnswers);
     });
 
-    return unsubscribe;
+    return () => unsubscribe?.();
   }, [id]);
 
   const handlePostAnswer = async (e: React.FormEvent) => {
