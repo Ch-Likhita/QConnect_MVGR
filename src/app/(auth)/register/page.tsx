@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { db, getAuthInstance } from '../../../lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { waitForUserDocument } from '../../../services/auth.service';
 
@@ -38,7 +38,21 @@ export default function RegisterPage() {
         throw new Error('User document creation timed out. Please try again.');
       }
 
-      push('/verify/role-select');
+      // Fetch the newly-created user document and route appropriately
+      const userDocSnap = await getDoc(doc(db, 'users', userCredential.user.uid));
+      const userData = userDocSnap.exists() ? (userDocSnap.data() as any) : null;
+
+      if (!userData || !userData.role) {
+        push('/verify/role-select');
+      } else if (userData.verificationStatus !== 'verified') {
+        if (userData.role === 'student') push('/verify/student-email');
+        else if (userData.role === 'expert') push('/verify/alumni-request');
+        else if (userData.role === 'recruiter') push('/verify/recruiter-request');
+        else if (userData.role === 'faculty') push('/verify/pending');
+        else push('/verify/role-select');
+      } else {
+        push('/home');
+      }
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {

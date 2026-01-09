@@ -478,28 +478,45 @@ export const rejectVerification =
     return {success: true};
   });
 
-// 7. Engagement: Like Answer
-export const likeAnswer = functions.https.onCall(async (data, context) => {
+// 7. Engagement: Toggle Like Answer
+export const toggleLike = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
       "Auth required"
     );
   }
+
   const {questionId, answerId} = data;
+  const uid = context.auth.uid;
 
-  // In production, maintain a 'likes' subcollection to prevent duplicates
-  // Here we just increment
-  await db
-    .collection("questions")
-    .doc(questionId)
-    .collection("answers")
-    .doc(answerId)
-    .update({
-      likeCount: admin.firestore.FieldValue.increment(1),
-    });
+  // Validate that IDs are not empty
+  if (!questionId || !answerId) {
+    throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid questionId and answerId.");
+  }
 
-  return {success: true};
+  const answerRef = admin.firestore().doc(`questions/${questionId}/answers/${answerId}`);
+  const userLikeRef = answerRef.collection("likes").doc(uid);
+
+  return await admin.firestore().runTransaction(async (transaction) => {
+    const likeDoc = await transaction.get(userLikeRef);
+
+    if (likeDoc.exists) {
+      // UNLIKE: Remove record and decrement
+      transaction.delete(userLikeRef);
+      transaction.update(answerRef, {
+        likeCount: admin.firestore.FieldValue.increment(-1)
+      });
+      return { status: 'unliked' };
+    } else {
+      // LIKE: Add record and increment
+      transaction.set(userLikeRef, { createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      transaction.update(answerRef, {
+        likeCount: admin.firestore.FieldValue.increment(1)
+      });
+      return { status: 'liked' };
+    }
+  });
 });
 
 // 8. Engagement: Update Question Status on Answer
